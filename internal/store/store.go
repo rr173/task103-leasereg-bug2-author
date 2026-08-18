@@ -212,6 +212,11 @@ func (s *Store) Renew(ctx context.Context, resource, holder string, fencingToken
 	if existing.FencingToken != fencingToken {
 		return 0, 0, ErrTokenMismatch
 	}
+	if maxTTL, ok, err := maxTTLForTx(ctx, tx, resource); err != nil {
+		return 0, 0, err
+	} else if ok && maxTTL > 0 && ttlSec > maxTTL {
+		return 0, 0, ErrTTLExceedsMax
+	}
 	expiresAt = now + ttlSec
 	if _, err := tx.ExecContext(ctx, `UPDATE leases SET expires_at = ?, ttl_seconds = ? WHERE resource = ?`, expiresAt, ttlSec, resource); err != nil {
 		return 0, 0, fmt.Errorf("renew update: %w", err)

@@ -108,6 +108,11 @@ func (m *Manager) Renew(ctx context.Context, resource, holder string, fencingTok
 	if fencingToken <= 0 {
 		return Lease{}, store.ErrTokenMismatch
 	}
+	if meta, ok, err := m.GetResource(ctx, resource); err != nil {
+		return Lease{}, err
+	} else if ok && meta.MaxTTL > 0 && ttlSeconds > meta.MaxTTL {
+		return Lease{}, store.ErrTTLExceedsMax
+	}
 	now := m.clock.Now()
 	acquiredAt, expiresAt, err := m.store.Renew(ctx, resource, holder, fencingToken, ttlSeconds, now.Unix())
 	if err != nil {
